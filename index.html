@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cocktail Matcher</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#d94b2b" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+</head>
+<body>
+  <nav class="top-nav">
+  <button id="showMatcher" type="button" class="nav-btn active">Matcher</button>
+  <button id="showPantry" type="button" class="nav-btn">Pantry</button>
+  <button id="showDatabase" type="button" class="nav-btn">Database</button>
+  </nav>
+
+    <main class="app" id="matcherView">
+    <section class="left-panel">
+      <header class="header">
+        <p class="eyebrow">Mood-based cocktail finder</p>
+        <h1>Cocktail Matcher</h1>
+        <p class="database-count">
+            <span id="cocktailCount">0</span> cocktails in database
+        </p>
+      </header>
+
+      <div class="chart-card">
+        <canvas id="vibeChart"></canvas>
+      </div>
+
+      <div class="sliders" id="sliders"></div>
+    </section>
+
+    <section class="right-panel">
+      <div class="result-card">
+        <p class="eyebrow">Best match</p>
+        <div class="result-heading">
+          <h2 id="bestName">—</h2>
+          <span id="pantryBadge" class="pantry-badge neutral">Pantry unset</span>
+        </div>
+        <p id="bestDescription">Move the sliders to find your drink.</p>
+
+        <div class="match-score">
+          <span>Match</span>
+          <strong id="bestScore">—</strong>
+        </div>
+
+        <h3>Ingredients</h3>
+        <ul id="ingredients"></ul>
+
+        <h3>Method</h3>
+        <p id="method">—</p>
+      </div>
+
+        <div class="filter-panel">
+        <div class="filter-header">
+            <h3>Ingredient filters</h3>
+            <button id="resetFilters" type="button">Reset</button>
+        </div>
+        <div id="activeFilters" class="active-filters"></div>
+        </div>
+
+        <div class="alternatives">
+        <h3>Alternatives</h3>
+        <div id="alternativeList"></div>
+        </div>
+    </section>
+    </main>
+  <section class="pantry-view" id="pantryView" hidden>
+  <div class="pantry-header">
+    <p class="eyebrow">Your bar shelf</p>
+    <h2>Pantry</h2>
+    <p class="database-count">
+      <span id="pantryCount">0</span> ingredients selected
+    </p>
+  </div>
+
+  <div class="pantry-toolbar">
+    <input id="pantrySearch" type="search" placeholder="Search ingredients" />
+    <button id="clearPantry" type="button">Clear pantry</button>
+  </div>
+
+  <div id="pantryList" class="pantry-list"></div>
+  </section>
+  <section class="database-view" id="databaseView" hidden>
+  <div class="database-header">
+    <p class="eyebrow">Cocktail library</p>
+    <h2>Database</h2>
+    <p class="database-count">
+      <span id="databaseCount">0</span> cocktails sorted alphabetically
+    </p>
+  </div>
+
+  <div id="databaseList" class="database-list"></div>
+  </section>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="cocktails.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
