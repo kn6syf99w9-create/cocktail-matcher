@@ -22,8 +22,12 @@
         <p class="eyebrow">Mood-based cocktail finder</p>
         <h1>Cocktail Matcher</h1>
         <p class="database-count">
-            <span id="cocktailCount">0</span> cocktails in database
+            <span id="cocktailCount">0</span> cocktails considered
         </p>
+        <div class="segmented-control compact" id="matcherPantryToggle" aria-label="Matcher cocktail pool">
+          <button id="matcherAll" type="button" class="active">All</button>
+          <button id="matcherPantryOnly" type="button">Pantry only</button>
+        </div>
       </header>
 
       <div class="chart-card">
@@ -38,7 +42,10 @@
         <p class="eyebrow">Best match</p>
         <div class="result-heading">
           <h2 id="bestName">—</h2>
-          <span id="pantryBadge" class="pantry-badge neutral">Pantry unset</span>
+          <div class="result-actions">
+            <button id="favoriteBest" class="favorite-btn" type="button" aria-label="Add favorite" title="Toggle favorite">☆</button>
+            <span id="pantryBadge" class="pantry-badge neutral">Pantry unset</span>
+          </div>
         </div>
         <p id="bestDescription">Move the sliders to find your drink.</p>
 
@@ -91,6 +98,10 @@
     <p class="database-count">
       <span id="databaseCount">0</span> cocktails sorted alphabetically
     </p>
+    <div class="segmented-control compact" id="databaseFavoriteToggle" aria-label="Database filter">
+      <button id="databaseAll" type="button" class="active">All</button>
+      <button id="databaseFavorites" type="button">Favorites</button>
+    </div>
   </div>
 
   <div id="databaseList" class="database-list"></div>

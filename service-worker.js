@@ -1,4 +1,4 @@
-const CACHE_NAME = "cocktail-matcher-v1";
+const CACHE_NAME = "cocktail-matcher-v2";
 
 const FILES_TO_CACHE = [
     "./",

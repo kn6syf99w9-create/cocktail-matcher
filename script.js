@@ -1,5 +1,6 @@
 const AXES = ["fresh", "cozy", "bitter", "experimental", "herbal", "heavy"];
 const PANTRY_STORAGE_KEY = "cocktailMatcherPantry";
+const FAVORITES_STORAGE_KEY = "cocktailMatcherFavorites";
 
 let userProfile = {
   fresh: 5,
@@ -13,6 +14,10 @@ let userProfile = {
 let requiredIngredients = new Set();
 let excludedIngredients = new Set();
 let pantryIngredients = new Set(loadPantryIngredients());
+let favoriteCocktails = new Set(loadFavoriteCocktails());
+let matcherPantryOnly = false;
+let databaseFavoritesOnly = false;
+let currentBestCocktailName = "";
 
 let vibeChart;
 
@@ -38,6 +43,70 @@ function loadPantryIngredients() {
 
 function savePantryIngredients() {
   localStorage.setItem(PANTRY_STORAGE_KEY, JSON.stringify([...pantryIngredients]));
+}
+
+function loadFavoriteCocktails() {
+  try {
+    const savedFavorites = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY));
+    return Array.isArray(savedFavorites) ? savedFavorites : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFavoriteCocktails() {
+  localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteCocktails]));
+}
+
+function isFavorite(cocktailName) {
+  return favoriteCocktails.has(cocktailName);
+}
+
+function cocktailIsMakeable(cocktail) {
+  return getUniqueCocktailIngredients(cocktail).every(ingredient =>
+    pantryIngredients.has(ingredient)
+  );
+}
+
+function getMatcherCandidateCocktails() {
+  return matcherPantryOnly
+    ? COCKTAILS.filter(cocktailIsMakeable)
+    : COCKTAILS;
+}
+
+function setFavoriteButtonState(button, cocktailName) {
+  const favorite = isFavorite(cocktailName);
+  button.textContent = favorite ? "★" : "☆";
+  button.classList.toggle("active", favorite);
+  button.setAttribute(
+    "aria-label",
+    favorite ? `Remove ${cocktailName} from favorites` : `Add ${cocktailName} to favorites`
+  );
+  button.setAttribute("aria-pressed", String(favorite));
+}
+
+function toggleFavorite(cocktailName) {
+  if (!cocktailName) {
+    return;
+  }
+
+  if (favoriteCocktails.has(cocktailName)) {
+    favoriteCocktails.delete(cocktailName);
+  } else {
+    favoriteCocktails.add(cocktailName);
+  }
+
+  saveFavoriteCocktails();
+  updateFavoriteButtons();
+  renderDatabase();
+}
+
+function updateFavoriteButtons() {
+  const bestButton = document.getElementById("favoriteBest");
+  if (bestButton) {
+    bestButton.hidden = !currentBestCocktailName;
+    setFavoriteButtonState(bestButton, currentBestCocktailName || "current cocktail");
+  }
 }
 
 function getCocktailIngredients(cocktail) {
@@ -127,7 +196,7 @@ function setPantryBadge(element, cocktail) {
 }
 
 function getFilteredCocktails() {
-  return COCKTAILS.filter(cocktailPassesIngredientFilters);
+  return getMatcherCandidateCocktails().filter(cocktailPassesIngredientFilters);
 }
 
 function getTopMatches() {
@@ -360,6 +429,20 @@ function togglePantryIngredient(ingredient) {
   updateApp();
 }
 
+function setMatcherMode(pantryOnly) {
+  matcherPantryOnly = pantryOnly;
+  document.getElementById("matcherAll").classList.toggle("active", !matcherPantryOnly);
+  document.getElementById("matcherPantryOnly").classList.toggle("active", matcherPantryOnly);
+  updateApp();
+}
+
+function setDatabaseMode(favoritesOnly) {
+  databaseFavoritesOnly = favoritesOnly;
+  document.getElementById("databaseAll").classList.toggle("active", !databaseFavoritesOnly);
+  document.getElementById("databaseFavorites").classList.toggle("active", databaseFavoritesOnly);
+  renderDatabase();
+}
+
 function updatePantryCount() {
   document.getElementById("pantryCount").textContent = pantryIngredients.size;
 }
@@ -395,11 +478,13 @@ function renderPantry() {
 
 function updateResult(matches) {
   const best = matches[0];
+  currentBestCocktailName = best.name;
 
   document.getElementById("bestName").textContent = best.name;
   document.getElementById("bestDescription").textContent = best.description;
   document.getElementById("bestScore").textContent = `${best.match}%`;
   setPantryBadge(document.getElementById("pantryBadge"), best);
+  updateFavoriteButtons();
 
   renderIngredients(best);
 
@@ -441,14 +526,18 @@ function updateResult(matches) {
 }
 
 function updateNoMatchState() {
+  const pantryPoolIsEmpty = matcherPantryOnly && getMatcherCandidateCocktails().length === 0;
+  currentBestCocktailName = "";
   document.getElementById("bestName").textContent = "No match";
-  document.getElementById("bestDescription").textContent =
-    "Your ingredient filters exclude all cocktails in the current database.";
+  document.getElementById("bestDescription").textContent = pantryPoolIsEmpty
+    ? "No cocktails can be made with the ingredients currently saved in your Pantry."
+    : "Your ingredient filters exclude all cocktails in the current database.";
   document.getElementById("bestScore").textContent = "—";
   document.getElementById("pantryBadge").textContent = "Pantry unset";
   document.getElementById("pantryBadge").className = "pantry-badge neutral";
+  updateFavoriteButtons();
   document.getElementById("ingredients").innerHTML =
-    `<li class="no-match">Reset filters or remove one of the active constraints.</li>`;
+    `<li class="no-match">${pantryPoolIsEmpty ? "Add ingredients to your Pantry or switch back to All." : "Reset filters or remove one of the active constraints."}</li>`;
   document.getElementById("method").textContent = "—";
   document.getElementById("alternativeList").innerHTML = "";
 
@@ -478,11 +567,12 @@ function resetFilters() {
 }
 
 function updateCocktailCount() {
-  document.getElementById("cocktailCount").textContent = COCKTAILS.length;
+  document.getElementById("cocktailCount").textContent = getMatcherCandidateCocktails().length;
 }
 
 function updateApp() {
   renderActiveFilters();
+  updateCocktailCount();
 
   const matches = getTopMatches();
 
@@ -504,11 +594,23 @@ function renderDatabase() {
 
   const sortedCocktails = [...COCKTAILS].sort((a, b) =>
     a.name.localeCompare(b.name)
-  );
+  ).filter(cocktail => !databaseFavoritesOnly || isFavorite(cocktail.name));
+
+  if (sortedCocktails.length === 0) {
+    databaseList.innerHTML = `
+      <div class="empty-state">
+        <strong>No favorites yet</strong>
+        <p>Star a cocktail from the Matcher or Database to keep it here.</p>
+      </div>
+    `;
+    document.getElementById("databaseCount").textContent = "0";
+    return;
+  }
 
   sortedCocktails.forEach(cocktail => {
     const card = document.createElement("details");
     card.className = "database-card database-details";
+    const favorite = isFavorite(cocktail.name);
 
     card.innerHTML = `
       <summary>
@@ -516,6 +618,7 @@ function renderDatabase() {
           <h3>${cocktail.name}</h3>
           <p>${cocktail.description}</p>
         </div>
+        <button class="favorite-btn database-favorite${favorite ? " active" : ""}" type="button" aria-label="${favorite ? `Remove ${cocktail.name} from favorites` : `Add ${cocktail.name} to favorites`}" aria-pressed="${favorite}" title="Toggle favorite">${favorite ? "★" : "☆"}</button>
       </summary>
 
       <div class="database-expanded">
@@ -529,10 +632,17 @@ function renderDatabase() {
       </div>
     `;
 
+    const favoriteButton = card.querySelector(".database-favorite");
+    favoriteButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleFavorite(cocktail.name);
+    });
+
     databaseList.appendChild(card);
   });
 
-  document.getElementById("databaseCount").textContent = COCKTAILS.length;
+  document.getElementById("databaseCount").textContent = sortedCocktails.length;
 }
 
 function showView(view) {
@@ -573,6 +683,21 @@ document.getElementById("showPantry").addEventListener("click", () => {
 
 document.getElementById("showDatabase").addEventListener("click", () => {
   showView("database");
+});
+document.getElementById("matcherAll").addEventListener("click", () => {
+  setMatcherMode(false);
+});
+document.getElementById("matcherPantryOnly").addEventListener("click", () => {
+  setMatcherMode(true);
+});
+document.getElementById("databaseAll").addEventListener("click", () => {
+  setDatabaseMode(false);
+});
+document.getElementById("databaseFavorites").addEventListener("click", () => {
+  setDatabaseMode(true);
+});
+document.getElementById("favoriteBest").addEventListener("click", () => {
+  toggleFavorite(currentBestCocktailName);
 });
 document.getElementById("resetFilters").addEventListener("click", resetFilters);
 document.getElementById("pantrySearch").addEventListener("input", renderPantry);
