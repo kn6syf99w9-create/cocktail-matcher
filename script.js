@@ -1,6 +1,7 @@
 const AXES = ["fresh", "cozy", "bitter", "experimental", "herbal", "heavy"];
 const PANTRY_STORAGE_KEY = "cocktailMatcherPantry";
 const FAVORITES_STORAGE_KEY = "cocktailMatcherFavorites";
+const PARTY_PLAN_STORAGE_KEY = "cocktailMatcherPartyPlan";
 
 let userProfile = {
   fresh: 5,
@@ -15,8 +16,9 @@ let requiredIngredients = new Set();
 let excludedIngredients = new Set();
 let pantryIngredients = new Set(loadPantryIngredients());
 let favoriteCocktails = new Set(loadFavoriteCocktails());
+let plannedCocktails = new Set(loadPlannedCocktails());
 let matcherPantryOnly = false;
-let databaseFavoritesOnly = false;
+let databaseMode = "all";
 let currentBestCocktailName = "";
 
 let vibeChart;
@@ -58,8 +60,25 @@ function saveFavoriteCocktails() {
   localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteCocktails]));
 }
 
+function loadPlannedCocktails() {
+  try {
+    const savedPlan = JSON.parse(localStorage.getItem(PARTY_PLAN_STORAGE_KEY));
+    return Array.isArray(savedPlan) ? savedPlan : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePlannedCocktails() {
+  localStorage.setItem(PARTY_PLAN_STORAGE_KEY, JSON.stringify([...plannedCocktails]));
+}
+
 function isFavorite(cocktailName) {
   return favoriteCocktails.has(cocktailName);
+}
+
+function isPlanned(cocktailName) {
+  return plannedCocktails.has(cocktailName);
 }
 
 function cocktailIsMakeable(cocktail) {
@@ -98,6 +117,21 @@ function toggleFavorite(cocktailName) {
 
   saveFavoriteCocktails();
   updateFavoriteButtons();
+  renderDatabase();
+}
+
+function togglePlanned(cocktailName) {
+  if (!cocktailName) {
+    return;
+  }
+
+  if (plannedCocktails.has(cocktailName)) {
+    plannedCocktails.delete(cocktailName);
+  } else {
+    plannedCocktails.add(cocktailName);
+  }
+
+  savePlannedCocktails();
   renderDatabase();
 }
 
@@ -436,10 +470,11 @@ function setMatcherMode(pantryOnly) {
   updateApp();
 }
 
-function setDatabaseMode(favoritesOnly) {
-  databaseFavoritesOnly = favoritesOnly;
-  document.getElementById("databaseAll").classList.toggle("active", !databaseFavoritesOnly);
-  document.getElementById("databaseFavorites").classList.toggle("active", databaseFavoritesOnly);
+function setDatabaseMode(mode) {
+  databaseMode = mode;
+  document.getElementById("databaseAll").classList.toggle("active", databaseMode === "all");
+  document.getElementById("databaseFavorites").classList.toggle("active", databaseMode === "favorites");
+  document.getElementById("databasePlan").classList.toggle("active", databaseMode === "plan");
   renderDatabase();
 }
 
@@ -570,6 +605,45 @@ function updateCocktailCount() {
   document.getElementById("cocktailCount").textContent = getMatcherCandidateCocktails().length;
 }
 
+function getPlanShoppingList(cocktails) {
+  return [...new Set(cocktails.flatMap(getUniqueCocktailIngredients))]
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function renderPartyPlanSections(cocktails) {
+  const partyPlanSections = document.getElementById("partyPlanSections");
+
+  if (databaseMode !== "plan" || cocktails.length === 0) {
+    partyPlanSections.hidden = true;
+    partyPlanSections.innerHTML = "";
+    return;
+  }
+
+  const shoppingList = getPlanShoppingList(cocktails);
+
+  partyPlanSections.hidden = false;
+  partyPlanSections.innerHTML = `
+    <section class="party-plan-panel">
+      <h3>Shopping List</h3>
+      <ul class="party-plan-list">
+        ${shoppingList.map(ingredient => `<li>${ingredient}</li>`).join("")}
+      </ul>
+    </section>
+
+    <section class="party-plan-panel">
+      <h3>Guest Menu</h3>
+      <div class="guest-menu-list">
+        ${cocktails.map(cocktail => `
+          <article class="guest-menu-item">
+            <strong>${cocktail.name}</strong>
+            <p>${cocktail.description}</p>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function updateApp() {
   renderActiveFilters();
   updateCocktailCount();
@@ -594,13 +668,30 @@ function renderDatabase() {
 
   const sortedCocktails = [...COCKTAILS].sort((a, b) =>
     a.name.localeCompare(b.name)
-  ).filter(cocktail => !databaseFavoritesOnly || isFavorite(cocktail.name));
+  ).filter(cocktail => {
+    if (databaseMode === "favorites") {
+      return isFavorite(cocktail.name);
+    }
+
+    if (databaseMode === "plan") {
+      return isPlanned(cocktail.name);
+    }
+
+    return true;
+  });
+
+  renderPartyPlanSections(sortedCocktails);
 
   if (sortedCocktails.length === 0) {
+    const emptyTitle = databaseMode === "plan" ? "No planned cocktails yet" : "No favorites yet";
+    const emptyMessage = databaseMode === "plan"
+      ? "Add cocktails with + Plan to build a shopping list and guest menu."
+      : "Star a cocktail from the Matcher or Database to keep it here.";
+
     databaseList.innerHTML = `
       <div class="empty-state">
-        <strong>No favorites yet</strong>
-        <p>Star a cocktail from the Matcher or Database to keep it here.</p>
+        <strong>${emptyTitle}</strong>
+        <p>${emptyMessage}</p>
       </div>
     `;
     document.getElementById("databaseCount").textContent = "0";
@@ -611,12 +702,14 @@ function renderDatabase() {
     const card = document.createElement("details");
     card.className = "database-card database-details";
     const favorite = isFavorite(cocktail.name);
+    const planned = isPlanned(cocktail.name);
 
     card.innerHTML = `
       <summary>
         <div>
           <h3>${cocktail.name}</h3>
           <p>${cocktail.description}</p>
+          <button class="plan-btn database-plan${planned ? " active" : ""}" type="button" aria-label="${planned ? `Remove ${cocktail.name} from party plan` : `Add ${cocktail.name} to party plan`}" aria-pressed="${planned}" title="Toggle party plan">${planned ? "✓ Planned" : "+ Plan"}</button>
         </div>
         <button class="favorite-btn database-favorite${favorite ? " active" : ""}" type="button" aria-label="${favorite ? `Remove ${cocktail.name} from favorites` : `Add ${cocktail.name} to favorites`}" aria-pressed="${favorite}" title="Toggle favorite">${favorite ? "★" : "☆"}</button>
       </summary>
@@ -631,6 +724,13 @@ function renderDatabase() {
         <p>${cocktail.method}</p>
       </div>
     `;
+
+    const planButton = card.querySelector(".database-plan");
+    planButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      togglePlanned(cocktail.name);
+    });
 
     const favoriteButton = card.querySelector(".database-favorite");
     favoriteButton.addEventListener("click", event => {
@@ -691,10 +791,13 @@ document.getElementById("matcherPantryOnly").addEventListener("click", () => {
   setMatcherMode(true);
 });
 document.getElementById("databaseAll").addEventListener("click", () => {
-  setDatabaseMode(false);
+  setDatabaseMode("all");
 });
 document.getElementById("databaseFavorites").addEventListener("click", () => {
-  setDatabaseMode(true);
+  setDatabaseMode("favorites");
+});
+document.getElementById("databasePlan").addEventListener("click", () => {
+  setDatabaseMode("plan");
 });
 document.getElementById("favoriteBest").addEventListener("click", () => {
   toggleFavorite(currentBestCocktailName);

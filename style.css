@@ -251,6 +251,7 @@ ul {
 .ingredient-btn,
 #resetFilters,
 #clearPantry,
+.plan-btn,
 .favorite-btn,
 .segmented-control button {
   border: 1px solid var(--border);
@@ -270,6 +271,7 @@ ul {
 .ingredient-btn:hover,
 #resetFilters:hover,
 #clearPantry:hover,
+.plan-btn:hover,
 .favorite-btn:hover,
 .segmented-control button:hover {
   transform: translateY(-1px);
@@ -292,6 +294,24 @@ ul {
   color: #ffd66b;
   border-color: rgba(255, 214, 107, 0.7);
   background: rgba(255, 214, 107, 0.14);
+}
+
+.plan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 7px 11px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.plan-btn.active {
+  color: #8df2b3;
+  border-color: rgba(141, 242, 179, 0.7);
+  background: rgba(141, 242, 179, 0.14);
 }
 
 .segmented-control {
@@ -542,6 +562,56 @@ ul {
   gap: 16px;
 }
 
+.party-plan-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.party-plan-panel {
+  border: 1px solid var(--border);
+  background: var(--card);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.party-plan-panel h3 {
+  margin-top: 0;
+}
+
+.party-plan-list {
+  columns: 2;
+  column-gap: 24px;
+}
+
+.guest-menu-list {
+  display: grid;
+  gap: 14px;
+}
+
+.guest-menu-item {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.guest-menu-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.guest-menu-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.guest-menu-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .database-card {
   border: 1px solid var(--border);
   background: var(--card);
@@ -601,8 +671,13 @@ ul {
   }
 
   .pantry-list,
-  .database-list {
+  .database-list,
+  .party-plan-sections {
     grid-template-columns: 1fr;
+  }
+
+  .party-plan-list {
+    columns: 1;
   }
 }
 
